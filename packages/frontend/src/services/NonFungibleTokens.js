@@ -1,7 +1,15 @@
+import * as nearAPI from 'near-api-js';
+
+import { ACCOUNT_HELPER_URL } from '../config';
 import sendJson from '../tmp_fetch_send_json';
-import { ACCOUNT_HELPER_URL, wallet } from '../utils/wallet';
+import { wallet } from '../utils/wallet';
 
 export const TOKENS_PER_PAGE = 4;
+export const NFT_TRANSFER_GAS = nearAPI.utils.format.parseNearAmount('0.00000000003');
+
+const NFT_TRANSFER_DEPOSIT = 1; // 1 yocto Near
+
+const functionCall = nearAPI.transactions.functionCall;
 
 // Methods for interacting witn NEP171 tokens (https://nomicon.io/Standards/NonFungibleToken/README.html)
 export default class NonFungibleTokens {
@@ -14,6 +22,15 @@ export default class NonFungibleTokens {
 
     static getMetadata = async (contractName) => {
         return this.viewFunctionAccount.viewFunction(contractName, 'nft_metadata');
+    }
+
+    static getNumberOfTokens = ({ contractName, accountId }) => {
+        return this.viewFunctionAccount.viewFunction(contractName, 'nft_supply_for_owner', { account_id: accountId });
+    }
+
+    static getToken = async (contractName, tokenId, base_uri) => {
+        const token = await this.viewFunctionAccount.viewFunction(contractName, 'nft_token', { token_id: tokenId });
+        return mapTokenMediaUrl(token, base_uri);
     }
 
     static getTokens = async ({ contractName, accountId, base_uri, fromIndex = 0 }) => {
@@ -44,30 +61,53 @@ export default class NonFungibleTokens {
             });
         }
         // TODO: Separate Redux action for loading image
-        tokens = await Promise.all(tokens.filter(({ metadata }) => !!metadata).map(async ({ metadata, ...token }) => {
-            const { media } = metadata;
-            let mediaUrl;
-            if (!media.includes('://')) {
-                if (base_uri) {
-                    mediaUrl = `${base_uri}/${media}`;
-                } else {
-                    mediaUrl = `https://cloudflare-ipfs.com/ipfs/${media}`;
-                }
-            } else {
-                mediaUrl = media;
-            }
-
-            return {
-                ...token,
-                metadata: {
-                    ...metadata,
-                    mediaUrl
-                }
-            };
-        }));
+        tokens = tokens
+          .filter(({ metadata }) => !!metadata)
+          .map(token => mapTokenMediaUrl(token, base_uri));
 
         return tokens;
     }
+
+    static transfer = async ({ accountId, contractId, tokenId, receiverId }) => {
+        const account = await wallet.getAccount(accountId);
+
+        return account.signAndSendTransaction({
+            receiverId: contractId,
+            actions: [
+                functionCall(
+                    'nft_transfer', 
+                    {
+                        receiver_id: receiverId,
+                        token_id: tokenId
+                    },
+                    NFT_TRANSFER_GAS,
+                    NFT_TRANSFER_DEPOSIT
+                )
+            ]
+        });
+    }
 }
 
-export const fungibleTokensService = new NonFungibleTokens();
+function mapTokenMediaUrl ({metadata, ...token}, base_uri) {
+    const { media } = metadata;
+    let mediaUrl;
+    if (media && !media.includes('://')) {
+        if (base_uri) {
+            mediaUrl = `${base_uri}/${media}`;
+        } else {
+            mediaUrl = `https://cloudflare-ipfs.com/ipfs/${media}`;
+        }
+    } else {
+        mediaUrl = media;
+    }
+
+    return {
+        ...token,
+        metadata: {
+            ...metadata,
+            mediaUrl
+        }
+    };
+}
+
+export const nonFungibleTokensService = new NonFungibleTokens();

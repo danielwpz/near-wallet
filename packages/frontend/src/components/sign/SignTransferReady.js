@@ -5,7 +5,9 @@ import { withRouter } from 'react-router-dom';
 import styled from 'styled-components';
 
 import { switchAccount } from '../../redux/actions/account';
+import { selectAccountSlice } from '../../redux/slices/account';
 import { selectAvailableAccounts } from '../../redux/slices/availableAccounts';
+import { selectSignSlice } from '../../redux/slices/sign';
 import Balance from '../common/balance/Balance';
 import Button from '../common/Button';
 import FormButton from '../common/FormButton';
@@ -13,7 +15,6 @@ import InlineNotification from '../common/InlineNotification';
 import SelectAccountDropdown from '../login/SelectAccountDropdown';
 import SignAnimatedArrow from './SignAnimatedArrow';
 import SignTransferDetails from './SignTransferDetails';
-
 
 const Container = styled.div`
     max-width: 450px;
@@ -167,7 +168,7 @@ class SignTransferReady extends Component {
             account,
             sending,
             handleAllow,
-            handleDeny,
+            handleCancel,
             txTotalAmount,
             isMonetaryTransaction,
             insufficientFunds,
@@ -191,7 +192,7 @@ class SignTransferReady extends Component {
                         </div>
                         <InlineNotification
                             show={insufficientFunds}
-                            onClick={handleDeny}
+                            onClick={handleCancel}
                             messageId='sign.insufficientFunds'
                             theme='error'
                             buttonMsgId='button.goBack'
@@ -219,7 +220,7 @@ class SignTransferReady extends Component {
                     <ButtonWrapper>
                         <Button 
                             theme='secondary' 
-                            onClick={handleDeny}
+                            onClick={handleCancel}
                         >
                             <Translate id='button.deny' />
                         </Button>
@@ -251,9 +252,9 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state) => ({
-    account: state.account,
+    account: selectAccountSlice(state),
     availableAccounts: selectAvailableAccounts(state),
-    ...state.sign
+    ...selectSignSlice(state)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(withRouter(SignTransferReady));

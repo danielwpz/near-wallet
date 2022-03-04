@@ -5,6 +5,7 @@ import { Translate } from 'react-localize-redux';
 import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 
+import { IS_MAINNET, MIN_BALANCE_FOR_GAS } from '../../config';
 import { useAccount } from '../../hooks/allAccounts';
 import { Mixpanel } from "../../mixpanel/index";
 import {
@@ -17,10 +18,11 @@ import {
     getBalance
 } from '../../redux/actions/account';
 import { selectProfileBalance } from '../../redux/reducers/selectors/balance';
+import { selectAccountAuthorizedApps, selectAccountHas2fa, selectAccountHasLockup, selectAccountId, selectAccountLedgerKey } from '../../redux/slices/account';
+import { selectAllAccountsHasLockup } from '../../redux/slices/allAccounts';
 import { actions as recoveryMethodsActions, selectRecoveryMethodsByAccountId } from '../../redux/slices/recoveryMethods';
 import { selectNearTokenFiatValueUSD } from '../../redux/slices/tokenFiatValues';
 import isMobile from '../../utils/isMobile';
-import { IS_MAINNET, MIN_BALANCE_FOR_GAS } from '../../utils/wallet';
 import FormButton from '../common/FormButton';
 import SkeletonLoading from '../common/SkeletonLoading';
 import Container from '../common/styled/Container.css';
@@ -130,8 +132,10 @@ const StyledContainer = styled(Container)`
 
 export function Profile({ match }) {
     const [transferring, setTransferring] = useState(false);
-    const { has2fa, authorizedApps, ledgerKey } = useSelector(({ account }) => account);
-    const loginAccountId = useSelector(state => state.account.accountId);
+    const has2fa = useSelector(selectAccountHas2fa);
+    const authorizedApps = useSelector(selectAccountAuthorizedApps);
+    const ledgerKey = useSelector(selectAccountLedgerKey);
+    const loginAccountId = useSelector(selectAccountId);
     const nearTokenFiatValueUSD = useSelector(selectNearTokenFiatValueUSD);
     const accountIdFromUrl = match.params.accountId;
     const accountId = accountIdFromUrl || loginAccountId;
@@ -139,6 +143,9 @@ export function Profile({ match }) {
     const account = useAccount(accountId);
     const dispatch = useDispatch();
     const profileBalance = selectProfileBalance(account);
+    const hasLockup = isOwner
+        ? useSelector(selectAccountHasLockup)
+        : useSelector((state) => selectAllAccountsHasLockup(state, { accountId }));
 
     const userRecoveryMethods = useSelector((state) => selectRecoveryMethodsByAccountId(state, { accountId: account.accountId }));
     const twoFactor = has2fa && userRecoveryMethods && userRecoveryMethods.filter(m => m.kind.includes('2fa'))[0];
@@ -205,7 +212,7 @@ export function Profile({ match }) {
 
     return (
         <StyledContainer>
-            {isOwner && profileBalance?.lockupIdExists && new BN(profileBalance.lockupBalance.unlocked.availableToTransfer).gte(MINIMUM_AVAILABLE_TO_TRANSFER) &&
+            {isOwner && hasLockup && new BN(profileBalance.lockupBalance.unlocked.availableToTransfer).gte(MINIMUM_AVAILABLE_TO_TRANSFER) &&
                 <LockupAvailTransfer
                     available={profileBalance.lockupBalance.unlocked.availableToTransfer || '0'}
                     onTransfer={handleTransferFromLockup}
@@ -220,6 +227,7 @@ export function Profile({ match }) {
                         <BalanceContainer
                             account={account}
                             profileBalance={profileBalance}
+                            hasLockup={hasLockup}
                             MIN_BALANCE_FOR_GAS_FORMATTED={formatNearAmount(MIN_BALANCE_FOR_GAS)}
                         />
                     ) : (
@@ -229,6 +237,13 @@ export function Profile({ match }) {
                             number={2}
                         />
                     )}
+                    {profileBalance?.lockupIdExists &&
+                        <SkeletonLoading
+                            height='323px'
+                            show={hasLockup === undefined}
+                            number={1}
+                        />
+                    }
                     {isOwner && authorizedApps?.length ?
                         <>
                             <hr/>

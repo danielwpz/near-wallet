@@ -3,11 +3,11 @@ import BN from 'bn.js';
 import set from 'lodash.set';
 import { createSelector } from 'reselect';
 
+import { WHITELISTED_CONTRACTS } from '../../../config';
 import FungibleTokens from '../../../services/FungibleTokens';
 import createParameterSelector from '../createParameterSelector';
 import initialErrorState from '../initialErrorState';
 
-const WHITELISTED_CONTRACTS = (process.env.TOKEN_CONTRACTS || 'berryclub.ek.near,farm.berryclub.ek.near,wrap.near').split(',');
 const SLICE_NAME = 'tokens';
 
 const initialState = {
@@ -155,14 +155,21 @@ export const selectOneTokenFromOwnedTokens = createSelector(
 
 export const selectTokensWithMetadataForAccountId = createSelector(
     [selectAllContractMetadata, selectOwnedTokensForAccount],
-    (allContractMetadata, ownedTokensForAccount) => Object.entries(ownedTokensForAccount)
-        .filter(([_, { balance }]) => !new BN(balance).isZero())
-        .map(([contractName, { balance }]) => ({
-            ...initialOwnedTokenState,
-            contractName,
-            balance,
-            ...(allContractMetadata[contractName] || {})
-        }))
+    (allContractMetadata, ownedTokensForAccount) =>
+        Object.entries(ownedTokensForAccount)
+            .filter(([_, { balance }]) => !new BN(balance).isZero())
+            .sort(([a], [b]) =>
+                allContractMetadata[a].name.localeCompare(
+                    allContractMetadata[b].name
+                )
+            )
+            .map(([contractName, { balance }]) => ({
+                ...initialOwnedTokenState,
+                contractName,
+                balance,
+                onChainFTMetadata: allContractMetadata[contractName] || {},
+                coingeckoMetadata: {},
+            }))
 );
 
 export const selectTokensLoading = createSelector(

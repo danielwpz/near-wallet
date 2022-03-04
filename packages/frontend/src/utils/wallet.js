@@ -3,26 +3,29 @@ import { KeyPair } from 'near-api-js';
 import { MULTISIG_CHANGE_METHODS } from 'near-api-js/lib/account_multisig';
 import { PublicKey } from 'near-api-js/lib/utils';
 import { KeyType } from 'near-api-js/lib/utils/key_pair';
-import { parseSeedPhrase } from 'near-seed-phrase';
-import { generateSeedPhrase } from 'near-seed-phrase';
+import { generateSeedPhrase, parseSeedPhrase } from 'near-seed-phrase';
 
 import { store } from '..';
+import * as Config from '../config';
 import {
-    setSignTransactionStatus,
-    setLedgerTxSigned,
-    showLedgerModal,
-    redirectTo,
     finishAccountSetup,
-    makeAccountActive
+    makeAccountActive,
+    redirectTo,
+    setLedgerTxSigned,
+    showLedgerModal
 } from '../redux/actions/account';
 import sendJson from '../tmp_fetch_send_json';
 import { decorateWithLockup } from './account-with-lockup';
 import { getAccountIds } from './helper-api';
-import { setAccountConfirmed, getAccountConfirmed, setAccountIsInactive, getAccountIsInactive, setReleaseNotesClosed } from './localStorage';
+import {
+    getAccountConfirmed,
+    getAccountIsInactive,
+    setAccountConfirmed,
+    setAccountIsInactive,
+    setReleaseNotesClosed
+} from './localStorage';
 import { TwoFactor } from './twoFactor';
 import { WalletError } from './walletError';
-
-export const RECAPTCHA_ENTERPRISE_SITE_KEY = process.env.RECAPTCHA_ENTERPRISE_SITE_KEY;
 
 export const WALLET_CREATE_NEW_ACCOUNT_URL = 'create';
 export const WALLET_CREATE_NEW_ACCOUNT_FLOW_URLS = [
@@ -43,35 +46,27 @@ export const WALLET_INITIAL_DEPOSIT_URL = 'initial-deposit';
 export const WALLET_LINKDROP_URL = 'linkdrop';
 export const WALLET_RECOVER_ACCOUNT_URL = 'recover-account';
 export const WALLET_SEND_MONEY_URL = 'send-money';
-export const ACCOUNT_HELPER_URL = process.env.REACT_APP_ACCOUNT_HELPER_URL || 'https://near-contract-helper.onrender.com';
-export const EXPLORER_URL = process.env.EXPLORER_URL || 'https://explorer.testnet.near.org';
-export const IS_MAINNET = process.env.REACT_APP_IS_MAINNET === 'true' || process.env.REACT_APP_IS_MAINNET === 'yes';
-export const SHOW_PRERELEASE_WARNING = process.env.SHOW_PRERELEASE_WARNING === 'true' || process.env.SHOW_PRERELEASE_WARNING === 'yes';
-export const SHOW_NETWORK_BANNER = !IS_MAINNET || SHOW_PRERELEASE_WARNING;
-export const DISABLE_CREATE_ACCOUNT = process.env.DISABLE_CREATE_ACCOUNT === 'true' || process.env.DISABLE_CREATE_ACCOUNT === 'yes';
-export const DISABLE_SEND_MONEY = process.env.DISABLE_SEND_MONEY === 'true' || process.env.DISABLE_SEND_MONEY === 'yes';
-export const ACCOUNT_ID_SUFFIX = process.env.REACT_APP_ACCOUNT_ID_SUFFIX || 'testnet';
-export const MULTISIG_MIN_AMOUNT = process.env.REACT_APP_MULTISIG_MIN_AMOUNT || '4';
-export const MULTISIG_MIN_PROMPT_AMOUNT = process.env.REACT_APP_MULTISIG_MIN_PROMPT_AMOUNT || '200';
-export const LOCKUP_ACCOUNT_ID_SUFFIX = process.env.LOCKUP_ACCOUNT_ID_SUFFIX || 'lockup.near';
-export const MIN_BALANCE_FOR_GAS = process.env.REACT_APP_MIN_BALANCE_FOR_GAS || nearApiJs.utils.format.parseNearAmount('0.05');
-export const ACCESS_KEY_FUNDING_AMOUNT = process.env.REACT_APP_ACCESS_KEY_FUNDING_AMOUNT || nearApiJs.utils.format.parseNearAmount('0.25');
-export const LINKDROP_GAS = process.env.LINKDROP_GAS || '100000000000000';
-export const ENABLE_FULL_ACCESS_KEYS = process.env.ENABLE_FULL_ACCESS_KEYS === 'yes';
-export const HIDE_SIGN_IN_WITH_LEDGER_ENTER_ACCOUNT_ID_MODAL = process.env.HIDE_SIGN_IN_WITH_LEDGER_ENTER_ACCOUNT_ID_MODAL;
-export const SMS_BLACKLIST = process.env.SMS_BLACKLIST || 'CN,VN';
-export const EXPLORE_APPS_URL = process.env.EXPLORE_APPS_URL || 'https://awesomenear.com/trending/';
-export const EXPLORE_DEFI_URL = process.env.EXPLORE_DEFI_URL || 'https://awesomenear.com/categories/defi/';
-export const MIN_BALANCE_TO_CREATE = process.env.MIN_BALANCE_TO_CREATE || nearApiJs.utils.format.parseNearAmount('0.1');
-export const NETWORK_ID = process.env.REACT_APP_NETWORK_ID || 'default';
-export const DISABLE_PHONE_RECOVERY = process.env.DISABLE_PHONE_RECOVERY === 'yes';
+
+const {
+    ACCESS_KEY_FUNDING_AMOUNT,
+    ACCOUNT_HELPER_URL,
+    ACCOUNT_ID_SUFFIX,
+    IS_MAINNET,
+    LINKDROP_GAS,
+    MIN_BALANCE_FOR_GAS,
+    NETWORK_ID,
+    NODE_URL,
+    RECAPTCHA_CHALLENGE_API_KEY,
+    RECAPTCHA_ENTERPRISE_SITE_KEY,
+    SHOW_PRERELEASE_WARNING,
+} = Config;
 
 const CONTRACT_CREATE_ACCOUNT_URL = `${ACCOUNT_HELPER_URL}/account`;
 const FUNDED_ACCOUNT_CREATE_URL = `${ACCOUNT_HELPER_URL}/fundedAccount`;
 const IDENTITY_FUNDED_ACCOUNT_CREATE_URL = `${ACCOUNT_HELPER_URL}/identityFundedAccount`;
 const IDENTITY_VERIFICATION_METHOD_SEND_CODE_URL = `${ACCOUNT_HELPER_URL}/identityVerificationMethod`;
 
-export const NODE_URL = process.env.REACT_APP_NODE_URL || 'https://rpc.nearprotocol.com';
+export const SHOW_NETWORK_BANNER = !IS_MAINNET || SHOW_PRERELEASE_WARNING;
 export const ENABLE_IDENTITY_VERIFIED_ACCOUNT = true;
 // To disable coin-op 1.5: Set ENABLE_IDENTITY_VERIFIED_ACCOUNT to 'false'
 // TODO: Clean up all Coin-op 1.5 related code after test period
@@ -417,7 +412,7 @@ class Wallet {
             await this.keyStore.removeKey(NETWORK_ID, fundingContract);
         } else if (fundingAccountId) {
             await this.createNewAccountFromAnother(accountId, fundingAccountId, publicKey);
-        } else if (process.env.RECAPTCHA_CHALLENGE_API_KEY && recaptchaToken) {
+        } else if (RECAPTCHA_CHALLENGE_API_KEY && recaptchaToken) {
             await sendJson('POST', FUNDED_ACCOUNT_CREATE_URL, {
                 newAccountId: accountId,
                 newAccountPublicKey: publicKey.toString(),
@@ -440,11 +435,19 @@ class Wallet {
         newPublicKey,
         newInitialBalance
     }) {
-        const { status: { SuccessValue: createResultBase64 }, transaction: { hash: transactionHash } } =
-            await account.functionCall(ACCOUNT_ID_SUFFIX, 'create_account', {
+        const {
+            status: { SuccessValue: createResultBase64 },
+            transaction: { hash: transactionHash },
+        } = await account.functionCall({
+            contractId: ACCOUNT_ID_SUFFIX,
+            methodName: "create_account",
+            args: {
                 new_account_id: newAccountId,
-                new_public_key: newPublicKey.toString().replace(/^ed25519:/, '')
-            }, LINKDROP_GAS, newInitialBalance);
+                new_public_key: newPublicKey.toString().replace(/^ed25519:/, ""),
+            },
+            gas: LINKDROP_GAS,
+            attachedDeposit: newInitialBalance,
+        });
         const createResult = JSON.parse(Buffer.from(createResultBase64, 'base64'));
         if (!createResult) {
             throw new WalletError('Creating account has failed', 'createAccount.returnedFalse', { transactionHash });
@@ -944,10 +947,15 @@ class Wallet {
 
         const tempKeyStore = new nearApiJs.keyStores.InMemoryKeyStore();
         const implicitAccountId = Buffer.from(PublicKey.fromString(publicKey).data).toString('hex');
-        let accountIds = [accountId];
+
+        let accountIds = [];
+        const accountIdsByPublickKey = await getAccountIds(publicKey);
         if (!accountId) {
-            accountIds = await getAccountIds(publicKey);
+            accountIds = accountIdsByPublickKey;
+        } else if (accountIdsByPublickKey.includes(accountId)) {
+            accountIds = [accountId];
         }
+
         accountIds.push(implicitAccountId);
 
         // remove duplicate and non-existing accounts
@@ -1033,7 +1041,8 @@ class Wallet {
         } else {
             const lastAccount = accountIdsError.reverse().find((account) => account.error.type === 'LackBalanceForState');
             if (lastAccount) {
-                store.dispatch(redirectTo(`/`, { globalAlertPreventClear: true }));
+                this.accountId = localStorage.getItem(KEY_ACTIVE_ACCOUNT_ID) || '';
+                store.dispatch(redirectTo(`/profile/${lastAccount.accountId}`, { globalAlertPreventClear: true }));
                 throw lastAccount.error;
             } else {
                 throw accountIdsError[accountIdsError.length - 1].error;
@@ -1044,7 +1053,6 @@ class Wallet {
     async signAndSendTransactions(transactions, accountId = this.accountId) {
         const account = await this.getAccount(accountId);
 
-        store.dispatch(setSignTransactionStatus('in-progress'));
         const transactionHashes = [];
         for (let { receiverId, nonce, blockHash, actions } of transactions) {
             let status, transaction;
@@ -1052,7 +1060,15 @@ class Wallet {
             // See https://github.com/near/near-wallet/issues/1856
             const recreateTransaction = account.deployMultisig || true;
             if (recreateTransaction) {
-                ({ status, transaction } = await account.signAndSendTransaction(receiverId, actions));
+                try {
+                    ({ status, transaction } = await account.signAndSendTransaction({ receiverId, actions }));
+                } catch (error) {
+                    if (error.message.includes('Exceeded the prepaid gas')) {
+                        throw new WalletError(error.message, error.code, { transactionHashes });
+                    }
+
+                    throw error;
+                }
             } else {
                 // TODO: Maybe also only take receiverId and actions as with multisig path?
                 const [, signedTransaction] = await nearApiJs.transactions.signTransaction(receiverId, nonce, actions, blockHash, this.connection.signer, accountId, NETWORK_ID);
@@ -1063,8 +1079,10 @@ class Wallet {
             if (status.Failure !== undefined) {
                 throw new Error(`Transaction failure for transaction hash: ${transaction.hash}, receiver_id: ${transaction.receiver_id} .`);
             }
-
-            transactionHashes.push(transaction.hash);
+            transactionHashes.push({
+                hash: transaction.hash,
+                nonceString: nonce.toString()
+            });
         }
 
         return transactionHashes;

@@ -57,14 +57,14 @@ const StyledContainer = styled.div`
     }
 `;
 
-const NFTs = ({ tokens }) => {
+const NFTs = ({ tokens, accountId }) => {
     if (tokens.length) {
         return (
             <StyledContainer>
-                {tokens.map((tokenDetails) => (
+                {tokens.filter(tokenDetails => tokenDetails.ownedTokensMetadata && tokenDetails.ownedTokensMetadata.length).map((tokenDetails) => (
                     <NFTBox
                         key={tokenDetails.contractName}
-                        tokenDetails={tokenDetails}
+                        tokenDetails={Object.assign({ ownerId: accountId }, tokenDetails)}
                     />
                 ))}
             </StyledContainer>

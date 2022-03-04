@@ -1,4 +1,4 @@
-import { ConnectedRouter } from 'connected-react-router';
+import { ConnectedRouter, getRouter } from 'connected-react-router';
 import isString from 'lodash.isstring';
 import { parseSeedPhrase } from 'near-seed-phrase';
 import PropTypes from 'prop-types';
@@ -10,9 +10,14 @@ import { Redirect, Switch } from 'react-router-dom';
 import styled, { ThemeProvider } from 'styled-components';
 
 import TwoFactorVerifyModal from '../components/accounts/two_factor/TwoFactorVerifyModal';
+import { IS_MAINNET, PUBLIC_URL, SHOW_PRERELEASE_WARNING } from '../config';
+import ExampleFlag from '../ExampleFlag';
 import { Mixpanel } from "../mixpanel/index";
 import * as accountActions from '../redux/actions/account';
+import { selectAccountSlice } from '../redux/slices/account';
 import { actions as tokenFiatValueActions } from '../redux/slices/tokenFiatValues';
+import { LoginWrapper } from '../routes/LoginWrapper';
+import { SignWrapper } from '../routes/SignWrapper';
 import translations_en from '../translations/en.global.json';
 import translations_pt from '../translations/pt.global.json';
 import translations_ru from '../translations/ru.global.json';
@@ -26,8 +31,6 @@ import { getAccountIsInactive, removeAccountIsInactive, setAccountIsInactive } f
 import { reportUiActiveMixpanelThrottled } from '../utils/reportUiActiveMixpanelThrottled';
 import ScrollToTop from '../utils/ScrollToTop';
 import { 
-    IS_MAINNET, 
-    SHOW_PRERELEASE_WARNING, 
     WALLET_CREATE_NEW_ACCOUNT_FLOW_URLS,
     WALLET_LOGIN_URL,
     WALLET_SIGN_URL,
@@ -60,17 +63,16 @@ import NetworkBanner from './common/NetworkBanner';
 import PrivateRoute from './common/PrivateRoute';
 import PublicRoute from './common/PublicRoute';
 import GlobalStyle from './GlobalStyle';
-import { LoginWithRouter } from './login/Login';
 import { LoginCliLoginSuccess } from './login/LoginCliLoginSuccess';
 import Navigation from './navigation/Navigation';
+import { NFTDetailWrapper } from './nft/NFTDetailWrapper';
+import {PageNotFound} from './page-not-found/PageNotFound';
 import { Profile } from './profile/Profile';
 import { ReceiveContainerWrapper } from './receive-money/ReceiveContainerWrapper';
 import { SendContainerWrapper } from './send/SendContainerWrapper';
-import { SignWithRouter } from './sign/Sign';
 import { StakingContainer } from './staking/StakingContainer';
 import Terms from './terms/Terms';
 import { Wallet } from './wallet/Wallet';
-
 import '../index.css';
 
 const { 
@@ -89,7 +91,7 @@ const  {
 
 const theme = {};
 
-const PATH_PREFIX = process.env.PUBLIC_URL;
+const PATH_PREFIX = PUBLIC_URL;
 
 const Container = styled.div`
     min-height: 100vh;
@@ -326,6 +328,11 @@ class Routing extends Component {
                                 pathname: '/*',
                                 search: search
                             }} />
+                            <PublicRoute
+                                exact
+                                path='/example_flag'
+                                component={ExampleFlag}
+                            />
                             <GuestLandingRoute
                                 exact
                                 path='/'
@@ -447,7 +454,7 @@ class Routing extends Component {
                             />
                             <PrivateRoute
                                 path='/login'
-                                component={LoginWithRouter}
+                                component={LoginWrapper}
                             />
                             <PrivateRoute
                                 exact
@@ -466,6 +473,11 @@ class Routing extends Component {
                                     component={SendContainerWrapper}
                                 />
                             }
+                            <PrivateRoute
+                                exact
+                                path='/nft-detail/:contractId/:tokenId'
+                                component={NFTDetailWrapper}
+                            />
                             <PrivateRoute
                                 exact
                                 path='/receive-money'
@@ -491,7 +503,7 @@ class Routing extends Component {
                             <PrivateRoute
                                 exact
                                 path='/sign'
-                                component={SignWithRouter}
+                                component={SignWrapper}
                             />
                             {!isInactiveAccount &&
                                 <PrivateRoute
@@ -515,7 +527,7 @@ class Routing extends Component {
                                 indexBySearchEngines={true}
                             />
                             <PrivateRoute
-                                component={isInactiveAccount ? ActivateAccountWithRouter : Wallet}
+                                component={isInactiveAccount ? ActivateAccountWithRouter : PageNotFound}
                             />
                         </Switch>
                         <Footer/>
@@ -541,9 +553,9 @@ const mapDispatchToProps = {
     fetchTokenFiatValues
 };
 
-const mapStateToProps = ({ account, router }) => ({
-    account,
-    router
+const mapStateToProps = (state) => ({
+    account: selectAccountSlice(state),
+    router: getRouter(state)
 });
 
 export default connect(

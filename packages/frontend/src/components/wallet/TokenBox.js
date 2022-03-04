@@ -2,7 +2,7 @@ import React from 'react';
 import { Translate } from 'react-localize-redux';
 import styled from 'styled-components';
 
-import { EXPLORER_URL } from '../../utils/wallet';
+import { EXPLORER_URL } from '../../config';
 import Balance from '../common/balance/Balance';
 import TokenIcon from '../send/components/TokenIcon';
 import TokenAmount from './TokenAmount';
@@ -141,7 +141,7 @@ const TokenBox = ({ token, onClick }) => {
             data-test-id={`token-selection-${token.contractName || "NEAR"}`}
         >
             <div className='icon'>
-                <TokenIcon symbol={token.symbol} icon={token.icon}/>
+                <TokenIcon symbol={token.onChainFTMetadata?.symbol} icon={token.onChainFTMetadata?.icon}/>
             </div>
             <div className='desc'>
                 {token.contractName ?
@@ -152,24 +152,28 @@ const TokenBox = ({ token, onClick }) => {
                             target='_blank'
                             rel='noopener noreferrer'
                         >
-                            {token.name || token.symbol}
+                            {token.onChainFTMetadata?.name || token.onChainFTMetadata?.symbol}
                         </a>
                     </span>
                     :
                     <span className='symbol'>
-                        {token.symbol}
+                        {token.onChainFTMetadata?.symbol}
                     </span>
                 }
                 <span className='fiat-rate'>
-                    {token.usd
-                        ? <>${token.usd}</>
+                    {token.coingeckoMetadata?.usd
+                        ? <>${token.coingeckoMetadata?.usd}</>
                         : <span><Translate id='tokenBox.priceUnavailable' /></span>
                     }
                 </span>
             </div>
-            {token.symbol === 'NEAR' && !token.contractName ?
+            {token.onChainFTMetadata?.symbol === 'NEAR' && !token.contractName ?
                 <div className='balance'>
-                    <Balance amount={token.balance} symbol={false}/>
+                    <Balance
+                        amount={token.balance}
+                        data-test-id="walletHomeNearBalance"
+                        symbol={false}
+                    />
                 </div>
                 :
                 <TokenAmount 

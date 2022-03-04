@@ -1,7 +1,6 @@
-const { test, expect } = require("@playwright/test");
-const { HomePage } = require("../register/models/Home");
+const { test, expect } = require("../playwrightWithFixtures");
 
-const { createRandomBankSubAccount } = require("../utils/account");
+const { HomePage } = require("../register/models/Home");
 const { testDappURL } = require("../utils/config");
 const { LoginPage } = require("./models/Login");
 
@@ -10,21 +9,22 @@ const { describe, beforeAll, afterAll, beforeEach } = test;
 describe("Login with Dapp", () => {
     let testAccount;
 
-    beforeAll(async () => {
-        testAccount = await createRandomBankSubAccount();
+    beforeAll(async ({ bankAccount }) => {
+        testAccount = await bankAccount.spawnRandomSubAccountInstance();
+        await testAccount.create();
     });
 
     beforeEach(async ({ page }) => {
         const homePage = new HomePage(page);
         await homePage.navigate();
         await homePage.loginWithSeedPhraseLocalStorage(
-            testAccount.account.accountId,
+            testAccount.accountId,
             testAccount.seedPhrase
         );
     });
 
     afterAll(async () => {
-        testAccount && (await testAccount.delete());
+        await testAccount.delete();
     });
 
     test("navigates to login with dapp page", async ({ page }) => {
@@ -58,13 +58,13 @@ describe("Login with Dapp", () => {
 
         const accesskeyLocalStorageKey =
             await testDappPage.getAccessKeyForAccountId(
-                testAccount.account.accountId
+                testAccount.accountId
             );
         await expect(accesskeyLocalStorageKey).toBeTruthy();
 
         await expect(page).toMatchText(
             "data-test-id=testDapp-currentUser",
-            new RegExp(testAccount.account.accountId)
+            new RegExp(testAccount.accountId)
         );
     });
     test("navigates back to dapp when access is denied", async ({ page }) => {
@@ -81,7 +81,7 @@ describe("Login with Dapp", () => {
 
         const accesskeyLocalStorageKey =
             await testDappPage.getAccessKeyForAccountId(
-                testAccount.account.accountId
+                testAccount.accountId
             );
         await expect(accesskeyLocalStorageKey).toBeFalsy();
 

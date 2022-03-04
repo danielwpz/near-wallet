@@ -14,8 +14,10 @@ import {
     fundCreateAccount
 } from '../../redux/actions/account';
 import { clearGlobalAlert, showCustomAlert } from '../../redux/actions/status';
+import { selectAccountSlice } from '../../redux/slices/account';
 import { actions as linkdropActions } from '../../redux/slices/linkdrop';
 import { actions as recoveryMethodsActions, selectRecoveryMethodsByAccountId, selectRecoveryMethodsLoading } from '../../redux/slices/recoveryMethods';
+import { selectStatusMainLoader } from '../../redux/slices/status';
 import copyText from '../../utils/copyText';
 import isMobile from '../../utils/isMobile';
 import parseFundingOptions from '../../utils/parseFundingOptions';
@@ -260,6 +262,7 @@ class SetupSeedPhrase extends Component {
                                             isNewAccount={isNewAccount}
                                             onSubmit={this.handleOnSubmit}
                                             isLinkDrop={parseFundingOptions(this.props.location.search) !== null}
+                                            hasSeedPhraseRecovery={hasSeedPhraseRecovery}
                                         />
                                     </form>
                                 </Container>
@@ -291,16 +294,14 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state, { match }) => {
-
-    const { account, status } = state;
+    const { accountId } = match.params;
     
     return {
-        ...account,
-        verify: match.params.verify,
-        accountId: match.params.accountId,
-        recoveryMethods: selectRecoveryMethodsByAccountId(state, { accountId: match.params.accountId }),
-        mainLoader: status.mainLoader,
-        recoveryMethodsLoader: selectRecoveryMethodsLoading(state, { accountId: match.params.accountId })
+        ...selectAccountSlice(state),
+        accountId,
+        recoveryMethods: selectRecoveryMethodsByAccountId(state, { accountId }),
+        mainLoader: selectStatusMainLoader(state),
+        recoveryMethodsLoader: selectRecoveryMethodsLoading(state, { accountId })
     };
 };
 

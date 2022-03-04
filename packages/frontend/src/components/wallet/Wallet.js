@@ -6,7 +6,7 @@ import styled from 'styled-components';
 
 import { useFungibleTokensIncludingNEAR } from '../../hooks/fungibleTokensIncludingNEAR';
 import { Mixpanel } from "../../mixpanel/index";
-import { selectAccountId, selectBalance } from '../../redux/reducers/account';
+import { selectAccountId, selectBalance } from '../../redux/slices/account';
 import { selectCreateFromImplicitSuccess, actions as createFromImplicitActions } from '../../redux/slices/createFromImplicit';
 import { selectLinkdropAmount, actions as linkdropActions } from '../../redux/slices/linkdrop';
 import { selectTokensWithMetadataForAccountId, actions as nftActions } from '../../redux/slices/nft';
@@ -322,7 +322,7 @@ export function Wallet({ tab, setTab }) {
                         </div>
                     </div>
                     {tab === 'collectibles'
-                        ? <NFTs tokens={sortedNFTs} />
+                        ? <NFTs tokens={sortedNFTs} accountId={accountId} />
                         : <FungibleTokens
                             balance={balance}
                             tokensLoader={tokensLoader}
@@ -357,7 +357,10 @@ export function Wallet({ tab, setTab }) {
 
 const FungibleTokens = ({ balance, tokensLoader, fungibleTokens }) => {
     const availableBalanceIsZero = balance?.balanceAvailable === '0';
-    const hideFungibleTokenSection = availableBalanceIsZero && fungibleTokens?.length === 1 && fungibleTokens[0].symbol === 'NEAR';
+    const hideFungibleTokenSection =
+        availableBalanceIsZero &&
+        fungibleTokens?.length === 1 &&
+        fungibleTokens[0]?.onChainFTMetadata?.symbol === "NEAR";
     return (
         <>
             <div className='total-balance'>

@@ -1,6 +1,5 @@
 import reduceReducers from 'reduce-reducers';
 import { handleActions } from 'redux-actions';
-import { createSelector } from 'reselect';
 
 import {
     requestCode,
@@ -200,7 +199,17 @@ const account = handleActions({
                 loading: true
             }
         }
-    })
+    }),
+    [staking.getLockup]: (state, { error, payload, ready, meta }) => {
+        if (!ready || error || !meta.isOwner) {
+            return state;
+        }
+
+        return {
+            ...state,
+            hasLockup: !!payload
+        };
+    }
 }, initialState);
 
 export default reduceReducers(
@@ -215,9 +224,3 @@ export default reduceReducers(
     twoFactorPrompt,
     ledgerKey
 );
-
-export const selectAccount = (state) => state.account;
-export const selectAccountId = createSelector(selectAccount, (account) => account.accountId);
-export const selectBalance = createSelector(selectAccount, (account) => account.balance);
-export const selectAccountsBalances = createSelector(selectAccount, (account) => account.accountsBalance);
-export const signedInAccountIdLocalStorage = createSelector(selectAccount, (account) => account.localStorage?.accountId);

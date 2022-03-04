@@ -8,9 +8,13 @@ import { Mixpanel } from '../../mixpanel/index';
 import { getBalance } from '../../redux/actions/account';
 import {
     updateStaking,
-    staking as stakingActions,
-    handleStakingAction
+    handleStakingAction,
+    handleUpdateCurrent
 } from '../../redux/actions/staking';
+import { selectAccountHas2fa, selectAccountHasLockup, selectAccountId, selectBalance } from '../../redux/slices/account';
+import { selectLedgerHasLedger } from '../../redux/slices/ledger';
+import { selectStakingSlice } from '../../redux/slices/staking';
+import { selectStatusSlice } from '../../redux/slices/status';
 import { selectNearTokenFiatValueUSD } from '../../redux/slices/tokenFiatValues';
 import { setStakingAccountSelected, getStakingAccountSelected } from '../../utils/localStorage';
 import Container from '../common/styled/Container.css';
@@ -161,13 +165,15 @@ const StyledContainer = styled(Container)`
 
 export function StakingContainer({ history, match }) {
     const dispatch = useDispatch();
-    const { accountId, has2fa, balance = {} } = useSelector(({ account }) => account);
-    const status = useSelector(({ status }) => status);
-    const { hasLedger } = useSelector(({ ledger }) => ledger);
-    
-    const staking = useSelector(({ staking }) => staking);
+    const accountId = useSelector(selectAccountId);
+    const has2fa = useSelector(selectAccountHas2fa);
+    const balance = useSelector(selectBalance);
+    const status = useSelector(selectStatusSlice);
+    const hasLedger = useSelector(selectLedgerHasLedger);
+    const staking = useSelector(selectStakingSlice);
     const nearTokenFiatValueUSD = useSelector(selectNearTokenFiatValueUSD);
-    const hasLockup = !!staking.lockupId;
+    const hasLockup = useSelector(selectAccountHasLockup);
+
     const { currentAccount } = staking;
     const stakingAccounts = staking.accounts;
     const validators = staking.allValidators;
@@ -193,7 +199,7 @@ export function StakingContainer({ history, match }) {
 
     const handleSwitchAccount = (accountId) => {
         setStakingAccountSelected(accountId);
-        dispatch(stakingActions.updateCurrent(accountId));
+        dispatch(handleUpdateCurrent(accountId));
     };
 
     const handleAction = async (action, validator, amount) => {

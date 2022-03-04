@@ -7,20 +7,34 @@ expect.extend(matchers);
 
 const config = {
     globalSetup: require.resolve("./global-setup.js"),
+    reporter: [["./reporters/WalletE2eLogsReporter.js", { logger: console }], ["./reporters/pagerduty-reporter.js"]],
+    webServer: {
+        command:
+            "cd ../frontend && npx serve dist -l 1234 -s --ssl-cert devServerCertificates/primary.crt --ssl-key devServerCertificates/private.pem",
+        port: 1234,
+        timeout: 120 * 1000,
+        reuseExistingServer: false,
+    },
+    timeout: 60000,
     use: {
         baseURL: process.env.WALLET_URL || "https://wallet.testnet.near.org",
-        headless: false,
+        headless: true,
         viewport: { width: 1280, height: 720 },
         ignoreHTTPSErrors: true,
-        video: "on-first-retry",
+        storageState: {
+            origins: [
+                {
+                    origin: process.env.WALLET_URL || "https://wallet.testnet.near.org",
+                    localStorage: [{ name: "wallet.releaseNotesModal:v0.01.2:closed", value: "true" }],
+                },
+            ],
+        },
     },
     projects: [
         {
             name: "Desktop Chromium",
             use: {
                 browserName: "chromium",
-                // Test against Chrome Beta channel.
-                channel: "chrome-beta",
             },
         },
         {
